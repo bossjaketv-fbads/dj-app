@@ -403,7 +403,7 @@ fileInput.addEventListener("change", async () => {
   if (files.length === 0) return;
   let lastId = null;
   for (const file of files) {
-    if (!file.type.startsWith("audio/") && !/\.(mp3|wav|m4a|ogg|aac|flac)$/i.test(file.name)) {
+    if (!file.type.startsWith("audio/") && !/\.(mp3|wav|m4a|ogg|oga|aac|flac|opus|wma|aiff)$/i.test(file.name)) {
       continue;
     }
     const name = file.name.replace(/\.[^/.]+$/, "");
