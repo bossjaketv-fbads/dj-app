@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Spinner App</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>SPINNER APP</h1>
+  <button id="editModeBtn" class="ghost-btn" title="Edit pads">Edit</button>
+</header>
+
+<main id="board" class="board"></main>
+
+<footer class="bottombar">
+  <button id="playlistBtn" class="foot-btn">🎵 Playlist</button>
+  <button id="uploadBtn" class="foot-btn">⬆ Upload</button>
+  <button id="volumeBtn" class="foot-btn">🔊 Master Volume</button>
+</footer>
+
+<input type="file" id="fileInput" accept="audio/*" multiple hidden>
+
+<!-- Assign-sound-to-pad sheet -->
+<div id="assignSheet" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-header">
+      <h2>Set Pad</h2>
+      <button class="close-btn" data-close="assignSheet">✕</button>
+    </div>
+    <label class="field-label">Label</label>
+    <input type="text" id="padLabelInput" maxlength="24" placeholder="Pad name">
+
+    <label class="field-label">Color</label>
+    <div id="colorSwatches" class="swatches"></div>
+
+    <label class="field-label">Sound</label>
+    <div id="assignSoundList" class="sound-list"></div>
+    <button id="assignUploadBtn" class="secondary-btn">⬆ Upload new sound…</button>
+
+    <div class="sheet-actions">
+      <button id="clearPadBtn" class="danger-btn">Clear Pad</button>
+      <button id="savePadBtn" class="primary-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Playlist sheet -->
+<div id="playlistSheet" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-header">
+      <h2>Playlist</h2>
+      <button class="close-btn" data-close="playlistSheet">✕</button>
+    </div>
+    <div id="nowPlaying" class="now-playing hidden">
+      <div class="np-title" id="npTitle">—</div>
+      <input type="range" id="npSeek" min="0" max="100" value="0" step="0.1">
+      <div class="np-times"><span id="npCur">0:00</span><span id="npDur">0:00</span></div>
+      <div class="np-controls">
+        <button id="npPrev" class="ghost-btn">⏮</button>
+        <button id="npPlayPause" class="ghost-btn big">▶</button>
+        <button id="npNext" class="ghost-btn">⏭</button>
+        <button id="npStop" class="ghost-btn">⏹</button>
+      </div>
+    </div>
+    <div id="playlistList" class="sound-list"></div>
+    <div class="sheet-actions">
+      <button id="playlistUploadBtn" class="primary-btn">⬆ Add songs…</button>
+    </div>
+  </div>
+</div>
+
+<!-- Volume sheet -->
+<div id="volumeSheet" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-header">
+      <h2>Master Volume</h2>
+      <button class="close-btn" data-close="volumeSheet">✕</button>
+    </div>
+    <div class="volume-row">
+      <span>🔈</span>
+      <input type="range" id="masterVolumeSlider" min="0" max="100" value="80" step="1">
+      <span>🔊</span>
+    </div>
+    <div class="volume-value" id="volumeValue">80%</div>
+    <button id="stopAllBtn" class="danger-btn wide">⏹ Stop All Sounds</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
