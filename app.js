@@ -81,6 +81,8 @@ let library = [];               // [{id, name, blob, type}]
 let pads = loadPads();          // [{label, color, soundId}] x16
 let masterVolume = loadVolume();
 let editMode = false;
+let masterPaused = false;
+let pausedPlaylistWasPlaying = false;
 let assignTargetPad = null;     // index of pad being edited, or "playlist-upload"
 let pendingColor = null;
 
@@ -122,7 +124,7 @@ function ensureAudioCtx() {
     masterGain.gain.value = masterVolume / 100;
     masterGain.connect(audioCtx.destination);
   }
-  if (audioCtx.state === "suspended") audioCtx.resume();
+  if (audioCtx.state === "suspended" && !masterPaused) audioCtx.resume();
   return audioCtx;
 }
 
@@ -189,12 +191,34 @@ async function playPad(padIndex) {
 }
 
 function stopAll() {
+  if (masterPaused) setPaused(false);
   for (const [padIndex, sources] of activeSources.entries()) {
     sources.forEach((s) => { try { s.stop(); } catch (e) {} });
     setPadPlaying(padIndex, false);
   }
   activeSources.clear();
   stopPlaylist();
+}
+
+function setPaused(paused) {
+  masterPaused = paused;
+  if (paused) {
+    if (audioCtx && audioCtx.state === "running") audioCtx.suspend();
+    if (playlistAudio && !playlistAudio.paused) {
+      pausedPlaylistWasPlaying = true;
+      playlistAudio.pause();
+    } else {
+      pausedPlaylistWasPlaying = false;
+    }
+    pauseBtn.textContent = "▶ Resume";
+    pauseBtn.classList.add("active");
+  } else {
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    if (pausedPlaylistWasPlaying && playlistAudio) playlistAudio.play().catch(() => {});
+    pausedPlaylistWasPlaying = false;
+    pauseBtn.textContent = "⏸ Pause";
+    pauseBtn.classList.remove("active");
+  }
 }
 
 function setPadPlaying(padIndex, isPlaying) {
@@ -208,6 +232,7 @@ const boardEl = document.getElementById("board");
 const editModeBtn = document.getElementById("editModeBtn");
 const playlistBtn = document.getElementById("playlistBtn");
 const uploadBtn = document.getElementById("uploadBtn");
+const pauseBtn = document.getElementById("pauseBtn");
 const volumeBtn = document.getElementById("volumeBtn");
 const fileInput = document.getElementById("fileInput");
 
@@ -575,6 +600,7 @@ masterVolumeSlider.addEventListener("input", () => {
   volumeValue.textContent = `${v}%`;
 });
 stopAllBtn.addEventListener("click", stopAll);
+pauseBtn.addEventListener("click", () => setPaused(!masterPaused));
 
 /* ---------- Sheet open/close plumbing ---------- */
 function openSheet(sheet) {

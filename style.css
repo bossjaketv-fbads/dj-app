@@ -140,6 +140,12 @@ body {
   border-color: var(--accent);
 }
 
+#pauseBtn.active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: #06131f;
+}
+
 /* Sheets / modals */
 .sheet {
   position: fixed;
