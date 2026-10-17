@@ -233,6 +233,7 @@ const editModeBtn = document.getElementById("editModeBtn");
 const playlistBtn = document.getElementById("playlistBtn");
 const uploadBtn = document.getElementById("uploadBtn");
 const pauseBtn = document.getElementById("pauseBtn");
+const stopBtn = document.getElementById("stopBtn");
 const volumeBtn = document.getElementById("volumeBtn");
 const fileInput = document.getElementById("fileInput");
 
@@ -601,6 +602,7 @@ masterVolumeSlider.addEventListener("input", () => {
 });
 stopAllBtn.addEventListener("click", stopAll);
 pauseBtn.addEventListener("click", () => setPaused(!masterPaused));
+stopBtn.addEventListener("click", stopAll);
 
 /* ---------- Sheet open/close plumbing ---------- */
 function openSheet(sheet) {
