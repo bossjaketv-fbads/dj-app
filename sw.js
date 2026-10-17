@@ -1,4 +1,4 @@
-const CACHE_NAME = "spinner-app-v1";
+const CACHE_NAME = "spinner-app-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -24,20 +24,19 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Network-first for the app shell so a new deploy is picked up on the next
+// load while there's internet; falls back to the cached copy when offline.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          if (response.ok && response.type === "basic") {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok && response.type === "basic") {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
