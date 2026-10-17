@@ -643,7 +643,16 @@ async function init() {
   renderBoard();
 
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      reg.update(); // bypass the browser's own update-check throttle every time the app opens
+    }).catch(() => {});
+
+    let reloadedOnce = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadedOnce) return;
+      reloadedOnce = true;
+      window.location.reload();
+    });
   }
 }
 
