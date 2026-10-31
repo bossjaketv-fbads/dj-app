@@ -308,6 +308,24 @@ body {
 
 .template-category-header .del-btn { color: var(--accent); }
 
+.template-category-header.expandable {
+  cursor: pointer;
+}
+
+.template-category-header .chevron {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.template-category-header.expanded .chevron {
+  transform: rotate(90deg);
+}
+
 .template-sub-row {
   padding-left: 18px;
 }

@@ -528,6 +528,8 @@ pauseBtn.addEventListener("click", () => setPaused(!masterPaused));
 stopBtn.addEventListener("click", stopAll);
 
 /* ---------- Templates (category > sub-template presets) ---------- */
+const expandedCategories = new Set();
+
 function renderTemplatesList() {
   templatesList.innerHTML = "";
   const categories = templatesData.categories;
@@ -536,11 +538,21 @@ function renderTemplatesList() {
     return;
   }
   categories.forEach((cat) => {
+    const hasSubs = cat.subcategories.length > 0;
+    const isExpanded = expandedCategories.has(cat.id);
+
     const catEl = document.createElement("div");
     catEl.className = "template-category";
 
     const header = document.createElement("div");
-    header.className = "template-category-header";
+    header.className = "template-category-header" + (hasSubs ? " expandable" : "") + (isExpanded ? " expanded" : "");
+
+    if (hasSubs) {
+      const chevron = document.createElement("span");
+      chevron.className = "chevron";
+      header.appendChild(chevron);
+    }
+
     const nameEl = document.createElement("span");
     nameEl.className = "cat-name";
     nameEl.textContent = cat.name;
@@ -548,7 +560,8 @@ function renderTemplatesList() {
 
     const renameCatBtn = document.createElement("button");
     renameCatBtn.textContent = "Rename";
-    renameCatBtn.addEventListener("click", () => {
+    renameCatBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       const name = prompt("Rename category", cat.name);
       if (name && name.trim()) {
         cat.name = name.trim();
@@ -559,51 +572,63 @@ function renderTemplatesList() {
     const delCatBtn = document.createElement("button");
     delCatBtn.textContent = "Delete";
     delCatBtn.className = "del-btn";
-    delCatBtn.addEventListener("click", () => {
+    delCatBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       if (!confirm(`Delete category "${cat.name}" and all its templates inside?`)) return;
       templatesData.categories = templatesData.categories.filter((c) => c.id !== cat.id);
+      expandedCategories.delete(cat.id);
       saveTemplates();
       renderTemplatesList();
     });
     header.appendChild(renameCatBtn);
     header.appendChild(delCatBtn);
-    catEl.appendChild(header);
 
-    cat.subcategories.forEach((sub) => {
-      const row = document.createElement("div");
-      row.className = "sound-row template-sub-row";
-      const name = document.createElement("div");
-      name.className = "sound-name";
-      name.textContent = sub.name;
-      row.appendChild(name);
-
-      const renameSubBtn = document.createElement("button");
-      renameSubBtn.textContent = "Rename";
-      renameSubBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const name = prompt("Rename template", sub.name);
-        if (name && name.trim()) {
-          sub.name = name.trim();
-          saveTemplates();
-          renderTemplatesList();
-        }
-      });
-      const delSubBtn = document.createElement("button");
-      delSubBtn.textContent = "Delete";
-      delSubBtn.className = "del-btn";
-      delSubBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (!confirm(`Delete template "${sub.name}"?`)) return;
-        cat.subcategories = cat.subcategories.filter((s) => s.id !== sub.id);
-        saveTemplates();
+    if (hasSubs) {
+      header.addEventListener("click", () => {
+        if (expandedCategories.has(cat.id)) expandedCategories.delete(cat.id);
+        else expandedCategories.add(cat.id);
         renderTemplatesList();
       });
-      row.appendChild(renameSubBtn);
-      row.appendChild(delSubBtn);
+    }
+    catEl.appendChild(header);
 
-      row.addEventListener("click", () => loadTemplate(cat, sub));
-      catEl.appendChild(row);
-    });
+    if (hasSubs && isExpanded) {
+      cat.subcategories.forEach((sub) => {
+        const row = document.createElement("div");
+        row.className = "sound-row template-sub-row";
+        const name = document.createElement("div");
+        name.className = "sound-name";
+        name.textContent = sub.name;
+        row.appendChild(name);
+
+        const renameSubBtn = document.createElement("button");
+        renameSubBtn.textContent = "Rename";
+        renameSubBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const name = prompt("Rename template", sub.name);
+          if (name && name.trim()) {
+            sub.name = name.trim();
+            saveTemplates();
+            renderTemplatesList();
+          }
+        });
+        const delSubBtn = document.createElement("button");
+        delSubBtn.textContent = "Delete";
+        delSubBtn.className = "del-btn";
+        delSubBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!confirm(`Delete template "${sub.name}"?`)) return;
+          cat.subcategories = cat.subcategories.filter((s) => s.id !== sub.id);
+          saveTemplates();
+          renderTemplatesList();
+        });
+        row.appendChild(renameSubBtn);
+        row.appendChild(delSubBtn);
+
+        row.addEventListener("click", () => loadTemplate(cat, sub));
+        catEl.appendChild(row);
+      });
+    }
 
     templatesList.appendChild(catEl);
   });
@@ -649,6 +674,7 @@ function saveCurrentAsTemplate() {
   } else {
     cat.subcategories.push({ id: genId(), name: subName, pads: padsCopy });
   }
+  expandedCategories.add(cat.id);
   saveTemplates();
   renderTemplatesList();
   showToast(`Saved: ${cat.name} > ${subName}`);
