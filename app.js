@@ -290,6 +290,7 @@ const npStop = document.getElementById("npStop");
 const templatesSheet = document.getElementById("templatesSheet");
 const templatesList = document.getElementById("templatesList");
 const saveTemplateBtn = document.getElementById("saveTemplateBtn");
+const newProjectBtn = document.getElementById("newProjectBtn");
 
 const startSheet = document.getElementById("startSheet");
 const startNewBtn = document.getElementById("startNewBtn");
@@ -647,7 +648,7 @@ function renderTemplatesList() {
   templatesList.innerHTML = "";
   const categories = templatesData.categories;
   if (categories.length === 0) {
-    templatesList.innerHTML = '<div class="empty-hint">No templates yet. Set up your pads, then tap "Save Current Board as Template" below.</div>';
+    templatesList.innerHTML = '<div class="empty-hint">No templates yet. Set up your pads, then tap "Save Current Project as Template" below.</div>';
     return;
   }
   categories.forEach((cat) => {
@@ -725,7 +726,7 @@ function renderTemplatesList() {
 }
 
 function loadTemplate(cat, sub) {
-  if (!confirm(`Load "${sub.name}" (${cat.name})? This replaces your current pad setup.`)) return;
+  if (!confirm(`Load "${sub.name}" (${cat.name})? This replaces your current project.`)) return;
   let loaded = Array.isArray(sub.pads) ? JSON.parse(JSON.stringify(sub.pads)) : [];
   if (loaded.length !== PAD_COUNT) {
     loaded = Array.from({ length: PAD_COUNT }, (_, i) => loaded[i] || { label: "", color: null, soundId: null });
@@ -786,17 +787,26 @@ function hasSessionStarted() {
   try { return sessionStorage.getItem(SESSION_STARTED_KEY) === "1"; } catch (e) { return false; }
 }
 
-startNewBtn.addEventListener("click", () => {
-  if (confirm("Start a new blank board? This clears all 64 pads (your uploaded sounds stay in the library, nothing is deleted).")) {
-    pads = Array.from({ length: PAD_COUNT }, () => ({ label: "", color: null, soundId: null }));
-    savePads();
-    editMode = true;
-    editModeBtn.classList.add("active");
-    editModeBtn.textContent = "Done";
-    renderBoard();
+function startNewProject() {
+  if (!confirm("Start a new project? This clears all 64 pads (your uploaded sounds stay in the library, nothing is deleted). Save it as a template anytime from the Templates screen.")) {
+    return false;
   }
+  pads = Array.from({ length: PAD_COUNT }, () => ({ label: "", color: null, soundId: null }));
+  savePads();
+  editMode = true;
+  editModeBtn.classList.add("active");
+  editModeBtn.textContent = "Done";
+  renderBoard();
+  return true;
+}
+
+startNewBtn.addEventListener("click", () => {
+  startNewProject();
   markSessionStarted();
   closeSheet(startSheet);
+});
+newProjectBtn.addEventListener("click", () => {
+  if (startNewProject()) closeSheet(templatesSheet);
 });
 
 startOpenBtn.addEventListener("click", () => {
