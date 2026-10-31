@@ -49,57 +49,57 @@ body {
 .board {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 10px;
-  padding: 6px 14px;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  gap: 5px;
+  padding: 5px 8px;
   min-height: 0;
 }
 
 .pad {
   position: relative;
-  border: 2px solid var(--line);
-  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
   background: var(--pad-empty);
   color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: clamp(12px, 1.6vw, 16px);
+  font-size: clamp(8px, 1.1vw, 12px);
   font-weight: 700;
-  padding: 6px;
+  padding: 2px;
   overflow: hidden;
   transition: transform 0.06s ease, box-shadow 0.15s ease;
 }
 
 .pad .pad-label {
   pointer-events: none;
-  line-height: 1.2;
+  line-height: 1.15;
   word-break: break-word;
 }
 
 .pad.empty .pad-label {
   color: var(--muted);
   font-weight: 500;
-  font-size: 13px;
+  font-size: clamp(7px, 0.9vw, 10px);
 }
 
 .pad.playing {
-  box-shadow: 0 0 0 3px #fff inset, 0 0 22px currentColor;
-  transform: scale(0.96);
+  box-shadow: 0 0 0 2px #fff inset, 0 0 14px currentColor;
+  transform: scale(0.94);
 }
 
 .pad:active {
-  transform: scale(0.94);
+  transform: scale(0.9);
 }
 
 .pad.edit-mode::after {
   content: "✎";
   position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: 14px;
+  top: 2px;
+  right: 3px;
+  font-size: 9px;
   opacity: 0.75;
 }
 
@@ -368,6 +368,6 @@ input[type="range"]::-webkit-slider-thumb {
 .toast.hidden { display: none; }
 
 @media (max-width: 480px) {
-  .board { gap: 7px; padding: 4px 8px; }
+  .board { gap: 3px; padding: 3px 5px; }
   .bottombar { padding: 8px 8px calc(10px + var(--safe-bottom)); gap: 7px; }
 }

@@ -1,7 +1,7 @@
 "use strict";
 
 /* ---------- Constants ---------- */
-const PAD_COUNT = 16;
+const PAD_COUNT = 64; // 8 columns x 8 rows
 const COLORS = [
   "#ff3e3e", "#ff8a3e", "#ffd23e", "#8aff3e",
   "#3effc4", "#3ea0ff", "#7a5cff", "#ff5cd0",
@@ -97,7 +97,12 @@ function loadPads() {
     const raw = localStorage.getItem(PADS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length === PAD_COUNT) return arr;
+      if (Array.isArray(arr)) {
+        if (arr.length === PAD_COUNT) return arr;
+        // grid size changed since last save (e.g. 4x4 -> 8x8): keep existing
+        // pad assignments in place rather than wiping them out
+        return Array.from({ length: PAD_COUNT }, (_, i) => arr[i] || { label: "", color: null, soundId: null });
+      }
     }
   } catch (e) {}
   return Array.from({ length: PAD_COUNT }, () => ({ label: "", color: null, soundId: null }));

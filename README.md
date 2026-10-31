@@ -4,7 +4,7 @@ Simple DJ soundboard para sa mga events ug wedding — tap lang sa button, mo-ti
 
 ## Features (base sa sketch)
 
-- **4x4 grid sa mga pads (16 total)** — i-tap para motingog. Pwede overlapping/paspas nga tap (dili mag-block ang uban).
+- **8x8 grid sa mga pads (64 total)** — i-tap para motingog. Pwede overlapping/paspas nga tap (dili mag-block ang uban).
 - **Playlist** — para sa mas taas nga kanta/music (background music), naay play/pause, next/prev, seek bar.
 - **Upload** — pag-dugang ug bag-ong sounds/songs (mp3, wav, m4a, ogg) gikan sa tablet storage.
 - **Master Volume** — usa ka slider nga nagkontrolar sa tanang volume (pads ug playlist), plus "Stop All" para pahunongon dayon ang tanang tingog.
