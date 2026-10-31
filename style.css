@@ -46,6 +46,12 @@ body {
   font-weight: 800;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .board {
   flex: 1 1 auto;
   display: grid;
@@ -264,6 +270,52 @@ body {
   font-size: 14px;
   padding: 14px 4px;
   text-align: center;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0 0 10px;
+}
+
+.template-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.template-category {
+  margin-bottom: 10px;
+}
+
+.template-category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px;
+  font-weight: 700;
+  font-size: 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.template-category-header .cat-name {
+  flex: 1;
+}
+
+.template-category-header button {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.template-category-header .del-btn { color: var(--accent); }
+
+.template-sub-row {
+  padding-left: 18px;
 }
 
 .secondary-btn, .primary-btn, .danger-btn {

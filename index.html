@@ -17,7 +17,10 @@
 
 <header class="topbar">
   <h1>SPINNER APP</h1>
-  <button id="editModeBtn" class="ghost-btn" title="Edit pads">Edit</button>
+  <div class="topbar-actions">
+    <button id="templatesBtn" class="ghost-btn" title="Templates">📁 Templates</button>
+    <button id="editModeBtn" class="ghost-btn" title="Edit pads">Edit</button>
+  </div>
 </header>
 
 <main id="board" class="board"></main>
@@ -78,6 +81,19 @@
     <div class="sheet-actions">
       <button id="playlistUploadBtn" class="primary-btn">⬆ Add songs…</button>
     </div>
+  </div>
+</div>
+
+<!-- Templates sheet -->
+<div id="templatesSheet" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-header">
+      <h2>Templates</h2>
+      <button class="close-btn" data-close="templatesSheet">✕</button>
+    </div>
+    <p class="field-hint">Load a saved pad setup, or save your current pads as a new one. Make your own categories (e.g. Birthday) and templates inside them (e.g. Kids, 7th Birthday Boy).</p>
+    <div id="templatesList" class="template-list"></div>
+    <button id="saveTemplateBtn" class="primary-btn">💾 Save Current Board as Template</button>
   </div>
 </div>
 

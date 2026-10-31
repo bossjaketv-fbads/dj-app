@@ -9,6 +9,7 @@ Simple DJ soundboard para sa mga events ug wedding — tap lang sa button, mo-ti
 - **Upload** — pag-dugang ug bag-ong sounds/songs (mp3, wav, m4a, ogg) gikan sa tablet storage.
 - **Master Volume** — usa ka slider nga nagkontrolar sa tanang volume (pads ug playlist), plus "Stop All" para pahunongon dayon ang tanang tingog.
 - **Edit mode** (button sa taas, "Edit") — i-toggle para ma-set/rename/color ang matag pad. Pwede pud **long-press** sa usa ka pad bisan wala sa edit mode para i-edit dayon.
+- **Templates** (button sa taas, "📁 Templates") — i-save ang tibuok 64-pad setup ingon og template ubos sa category (e.g. "Birthday") ug sub-template (e.g. "Kids", "7th Birthday Boy"). I-tap ra ang template para ma-load dayon tanang pads — dili na kinahanglan i-set up balik matag event. Pwede ka maghimo ug kutob sa gusto nimo nga category/sub-template ug pwede sad i-rename/delete.
 - Ang tanang sounds ug pad settings **na-save sa mismong tablet** (IndexedDB + localStorage) — dili mawala bisan ma-close ang app o ma-refresh.
 - Naay **PWA support** (manifest + service worker), so pwede i-"Add to Home Screen" para maglihok siya og daghang klase og app, ug mo-load bisan walay stable internet human na-open sa una.
 

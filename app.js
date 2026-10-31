@@ -9,6 +9,7 @@ const COLORS = [
 ];
 const PADS_KEY = "spinner_pads_v1";
 const VOLUME_KEY = "spinner_volume_v1";
+const TEMPLATES_KEY = "spinner_templates_v1";
 
 /* ---------- IndexedDB (sound library) ---------- */
 let dbPromise = null;
@@ -85,6 +86,7 @@ let masterPaused = false;
 let pausedPlaylistWasPlaying = false;
 let assignTargetPad = null;     // index of pad being edited, or "playlist-upload"
 let pendingColor = null;
+let templatesData = loadTemplates(); // { categories: [{id, name, subcategories: [{id, name, pads}]}] }
 
 const decodedCache = new Map(); // soundId -> AudioBuffer
 const objectUrlCache = new Map(); // soundId -> blob url
@@ -115,6 +117,27 @@ function savePads() {
 function loadVolume() {
   const v = parseFloat(localStorage.getItem(VOLUME_KEY));
   return Number.isFinite(v) ? v : 80;
+}
+
+function loadTemplates() {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && Array.isArray(data.categories)) return data;
+    }
+  } catch (e) {}
+  return { categories: [] };
+}
+
+function saveTemplates() {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templatesData));
+}
+
+function genId() {
+  return window.crypto && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
 function saveVolume() {
@@ -234,6 +257,7 @@ function setPadPlaying(padIndex, isPlaying) {
 
 /* ---------- DOM refs ---------- */
 const boardEl = document.getElementById("board");
+const templatesBtn = document.getElementById("templatesBtn");
 const editModeBtn = document.getElementById("editModeBtn");
 const playlistBtn = document.getElementById("playlistBtn");
 const uploadBtn = document.getElementById("uploadBtn");
@@ -262,6 +286,10 @@ const npPlayPause = document.getElementById("npPlayPause");
 const npPrev = document.getElementById("npPrev");
 const npNext = document.getElementById("npNext");
 const npStop = document.getElementById("npStop");
+
+const templatesSheet = document.getElementById("templatesSheet");
+const templatesList = document.getElementById("templatesList");
+const saveTemplateBtn = document.getElementById("saveTemplateBtn");
 
 const volumeSheet = document.getElementById("volumeSheet");
 const masterVolumeSlider = document.getElementById("masterVolumeSlider");
@@ -608,6 +636,139 @@ masterVolumeSlider.addEventListener("input", () => {
 stopAllBtn.addEventListener("click", stopAll);
 pauseBtn.addEventListener("click", () => setPaused(!masterPaused));
 stopBtn.addEventListener("click", stopAll);
+
+/* ---------- Templates (category > sub-template presets) ---------- */
+function renderTemplatesList() {
+  templatesList.innerHTML = "";
+  const categories = templatesData.categories;
+  if (categories.length === 0) {
+    templatesList.innerHTML = '<div class="empty-hint">No templates yet. Set up your pads, then tap "Save Current Board as Template" below.</div>';
+    return;
+  }
+  categories.forEach((cat) => {
+    const catEl = document.createElement("div");
+    catEl.className = "template-category";
+
+    const header = document.createElement("div");
+    header.className = "template-category-header";
+    const nameEl = document.createElement("span");
+    nameEl.className = "cat-name";
+    nameEl.textContent = cat.name;
+    header.appendChild(nameEl);
+
+    const renameCatBtn = document.createElement("button");
+    renameCatBtn.textContent = "✎";
+    renameCatBtn.addEventListener("click", () => {
+      const name = prompt("Rename category", cat.name);
+      if (name && name.trim()) {
+        cat.name = name.trim();
+        saveTemplates();
+        renderTemplatesList();
+      }
+    });
+    const delCatBtn = document.createElement("button");
+    delCatBtn.textContent = "🗑";
+    delCatBtn.className = "del-btn";
+    delCatBtn.addEventListener("click", () => {
+      if (!confirm(`Delete category "${cat.name}" and all its templates inside?`)) return;
+      templatesData.categories = templatesData.categories.filter((c) => c.id !== cat.id);
+      saveTemplates();
+      renderTemplatesList();
+    });
+    header.appendChild(renameCatBtn);
+    header.appendChild(delCatBtn);
+    catEl.appendChild(header);
+
+    cat.subcategories.forEach((sub) => {
+      const row = document.createElement("div");
+      row.className = "sound-row template-sub-row";
+      const name = document.createElement("div");
+      name.className = "sound-name";
+      name.textContent = sub.name;
+      row.appendChild(name);
+
+      const renameSubBtn = document.createElement("button");
+      renameSubBtn.textContent = "✎";
+      renameSubBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const name = prompt("Rename template", sub.name);
+        if (name && name.trim()) {
+          sub.name = name.trim();
+          saveTemplates();
+          renderTemplatesList();
+        }
+      });
+      const delSubBtn = document.createElement("button");
+      delSubBtn.textContent = "🗑";
+      delSubBtn.className = "del-btn";
+      delSubBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete template "${sub.name}"?`)) return;
+        cat.subcategories = cat.subcategories.filter((s) => s.id !== sub.id);
+        saveTemplates();
+        renderTemplatesList();
+      });
+      row.appendChild(renameSubBtn);
+      row.appendChild(delSubBtn);
+
+      row.addEventListener("click", () => loadTemplate(cat, sub));
+      catEl.appendChild(row);
+    });
+
+    templatesList.appendChild(catEl);
+  });
+}
+
+function loadTemplate(cat, sub) {
+  if (!confirm(`Load "${sub.name}" (${cat.name})? This replaces your current pad setup.`)) return;
+  let loaded = Array.isArray(sub.pads) ? JSON.parse(JSON.stringify(sub.pads)) : [];
+  if (loaded.length !== PAD_COUNT) {
+    loaded = Array.from({ length: PAD_COUNT }, (_, i) => loaded[i] || { label: "", color: null, soundId: null });
+  }
+  pads = loaded;
+  savePads();
+  renderBoard();
+  closeSheet(templatesSheet);
+  showToast(`Loaded: ${cat.name} > ${sub.name}`);
+}
+
+function saveCurrentAsTemplate() {
+  const existingCatNames = templatesData.categories.map((c) => c.name).join(", ");
+  const catInput = prompt(
+    existingCatNames ? `Category name (existing: ${existingCatNames})` : "Category name (e.g. Birthday, Wedding)",
+    ""
+  );
+  if (!catInput || !catInput.trim()) return;
+  const catName = catInput.trim();
+
+  const subInput = prompt('Template name within "' + catName + '" (e.g. Kids, 7th Birthday Boy)', "");
+  if (!subInput || !subInput.trim()) return;
+  const subName = subInput.trim();
+
+  let cat = templatesData.categories.find((c) => c.name.toLowerCase() === catName.toLowerCase());
+  if (!cat) {
+    cat = { id: genId(), name: catName, subcategories: [] };
+    templatesData.categories.push(cat);
+  }
+
+  const padsCopy = JSON.parse(JSON.stringify(pads));
+  const existingSub = cat.subcategories.find((s) => s.name.toLowerCase() === subName.toLowerCase());
+  if (existingSub) {
+    if (!confirm(`"${subName}" already exists under ${cat.name}. Overwrite it?`)) return;
+    existingSub.pads = padsCopy;
+  } else {
+    cat.subcategories.push({ id: genId(), name: subName, pads: padsCopy });
+  }
+  saveTemplates();
+  renderTemplatesList();
+  showToast(`Saved: ${cat.name} > ${subName}`);
+}
+
+templatesBtn.addEventListener("click", () => {
+  renderTemplatesList();
+  openSheet(templatesSheet);
+});
+saveTemplateBtn.addEventListener("click", saveCurrentAsTemplate);
 
 /* ---------- Sheet open/close plumbing ---------- */
 function openSheet(sheet) {
