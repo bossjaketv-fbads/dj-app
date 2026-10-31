@@ -1,4 +1,4 @@
-const CACHE_NAME = "spinner-app-v2";
+const CACHE_NAME = "spinner-app-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -26,10 +26,13 @@ self.addEventListener("activate", (event) => {
 
 // Network-first for the app shell so a new deploy is picked up on the next
 // load while there's internet; falls back to the cached copy when offline.
+// cache: "no-store" bypasses the browser's own HTTP cache too, not just this
+// service worker's Cache Storage — otherwise a file with a fresh-looking
+// Cache-Control header can still be served stale underneath us.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-store" })
       .then((response) => {
         if (response.ok && response.type === "basic") {
           const clone = response.clone();

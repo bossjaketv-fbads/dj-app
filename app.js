@@ -291,6 +291,11 @@ const templatesSheet = document.getElementById("templatesSheet");
 const templatesList = document.getElementById("templatesList");
 const saveTemplateBtn = document.getElementById("saveTemplateBtn");
 
+const startSheet = document.getElementById("startSheet");
+const startNewBtn = document.getElementById("startNewBtn");
+const startOpenBtn = document.getElementById("startOpenBtn");
+const startLiveBtn = document.getElementById("startLiveBtn");
+
 const volumeSheet = document.getElementById("volumeSheet");
 const masterVolumeSlider = document.getElementById("masterVolumeSlider");
 const volumeValue = document.getElementById("volumeValue");
@@ -770,6 +775,42 @@ templatesBtn.addEventListener("click", () => {
 });
 saveTemplateBtn.addEventListener("click", saveCurrentAsTemplate);
 
+/* ---------- Start-of-session choice ---------- */
+const SESSION_STARTED_KEY = "spinner_session_started";
+
+function markSessionStarted() {
+  try { sessionStorage.setItem(SESSION_STARTED_KEY, "1"); } catch (e) {}
+}
+
+function hasSessionStarted() {
+  try { return sessionStorage.getItem(SESSION_STARTED_KEY) === "1"; } catch (e) { return false; }
+}
+
+startNewBtn.addEventListener("click", () => {
+  if (confirm("Start a new blank board? This clears all 64 pads (your uploaded sounds stay in the library, nothing is deleted).")) {
+    pads = Array.from({ length: PAD_COUNT }, () => ({ label: "", color: null, soundId: null }));
+    savePads();
+    editMode = true;
+    editModeBtn.classList.add("active");
+    editModeBtn.textContent = "Done";
+    renderBoard();
+  }
+  markSessionStarted();
+  closeSheet(startSheet);
+});
+
+startOpenBtn.addEventListener("click", () => {
+  markSessionStarted();
+  closeSheet(startSheet);
+  renderTemplatesList();
+  openSheet(templatesSheet);
+});
+
+startLiveBtn.addEventListener("click", () => {
+  markSessionStarted();
+  closeSheet(startSheet);
+});
+
 /* ---------- Sheet open/close plumbing ---------- */
 function openSheet(sheet) {
   ensureAudioCtx();
@@ -807,6 +848,11 @@ async function init() {
     library = [];
   }
   renderBoard();
+
+  if (!hasSessionStarted()) {
+    renderTemplatesList(); // so "Open Template" has fresh data ready behind it
+    openSheet(startSheet);
+  }
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").then((reg) => {
