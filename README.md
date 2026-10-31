@@ -5,7 +5,8 @@ Simple DJ soundboard para sa mga events ug wedding — tap lang sa button, mo-ti
 ## Features (base sa sketch)
 
 - **8x8 grid sa mga pads (64 total)** — i-tap para motingog. Pwede overlapping/paspas nga tap (dili mag-block ang uban).
-- **Playlist** — para sa mas taas nga kanta/music (background music), naay play/pause, next/prev, seek bar.
+- **Sound Library** (i-tap ang "Upload") — listahan sa tanang na-upload na sounds, shared sa tanang pads ug templates; pwede i-rename/delete gikan diri.
+- **💾 Save Template** (footer button) — diretso i-save ang current project (tanan 64 pads) ingon og template, walay kinahanglan abli-abrihon pa ang Templates sheet.
 - **Upload** — pag-dugang ug bag-ong sounds/songs (mp3, wav, m4a, ogg) gikan sa tablet storage.
 - **Master Volume** — usa ka slider nga nagkontrolar sa tanang volume (pads ug playlist), plus "Stop All" para pahunongon dayon ang tanang tingog.
 - **Edit mode** (button sa taas, "Edit") — i-toggle para ma-set/rename/color ang matag pad. Pwede pud **long-press** sa usa ka pad bisan wala sa edit mode para i-edit dayon.

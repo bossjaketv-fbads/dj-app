@@ -83,13 +83,11 @@ let pads = loadPads();          // [{label, color, soundId}] x16
 let masterVolume = loadVolume();
 let editMode = false;
 let masterPaused = false;
-let pausedPlaylistWasPlaying = false;
-let assignTargetPad = null;     // index of pad being edited, or "playlist-upload"
+let assignTargetPad = null;     // index of pad being edited
 let pendingColor = null;
 let templatesData = loadTemplates(); // { categories: [{id, name, subcategories: [{id, name, pads}]}] }
 
 const decodedCache = new Map(); // soundId -> AudioBuffer
-const objectUrlCache = new Map(); // soundId -> blob url
 
 let audioCtx = null;
 let masterGain = null;
@@ -159,7 +157,6 @@ function ensureAudioCtx() {
 function setMasterVolume(v) {
   masterVolume = v;
   if (masterGain) masterGain.gain.value = v / 100;
-  if (playlistAudio) playlistAudio.volume = v / 100;
   saveVolume();
 }
 
@@ -176,15 +173,6 @@ async function getDecodedBuffer(soundId) {
   const audioBuffer = await ctx.decodeAudioData(arrBuf.slice(0));
   decodedCache.set(soundId, audioBuffer);
   return audioBuffer;
-}
-
-function getObjectUrl(soundId) {
-  if (objectUrlCache.has(soundId)) return objectUrlCache.get(soundId);
-  const sound = getSoundById(soundId);
-  if (!sound) return null;
-  const url = URL.createObjectURL(sound.blob);
-  objectUrlCache.set(soundId, url);
-  return url;
 }
 
 const activeSources = new Map(); // padIndex -> {source, node}
@@ -225,25 +213,16 @@ function stopAll() {
     setPadPlaying(padIndex, false);
   }
   activeSources.clear();
-  stopPlaylist();
 }
 
 function setPaused(paused) {
   masterPaused = paused;
   if (paused) {
     if (audioCtx && audioCtx.state === "running") audioCtx.suspend();
-    if (playlistAudio && !playlistAudio.paused) {
-      pausedPlaylistWasPlaying = true;
-      playlistAudio.pause();
-    } else {
-      pausedPlaylistWasPlaying = false;
-    }
     pauseBtn.textContent = "▶ Resume";
     pauseBtn.classList.add("active");
   } else {
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
-    if (pausedPlaylistWasPlaying && playlistAudio) playlistAudio.play().catch(() => {});
-    pausedPlaylistWasPlaying = false;
     pauseBtn.textContent = "⏸ Pause";
     pauseBtn.classList.remove("active");
   }
@@ -259,7 +238,7 @@ function setPadPlaying(padIndex, isPlaying) {
 const boardEl = document.getElementById("board");
 const templatesBtn = document.getElementById("templatesBtn");
 const editModeBtn = document.getElementById("editModeBtn");
-const playlistBtn = document.getElementById("playlistBtn");
+const quickSaveTemplateBtn = document.getElementById("quickSaveTemplateBtn");
 const uploadBtn = document.getElementById("uploadBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -274,18 +253,9 @@ const assignUploadBtn = document.getElementById("assignUploadBtn");
 const clearPadBtn = document.getElementById("clearPadBtn");
 const savePadBtn = document.getElementById("savePadBtn");
 
-const playlistSheet = document.getElementById("playlistSheet");
-const playlistList = document.getElementById("playlistList");
-const playlistUploadBtn = document.getElementById("playlistUploadBtn");
-const nowPlaying = document.getElementById("nowPlaying");
-const npTitle = document.getElementById("npTitle");
-const npSeek = document.getElementById("npSeek");
-const npCur = document.getElementById("npCur");
-const npDur = document.getElementById("npDur");
-const npPlayPause = document.getElementById("npPlayPause");
-const npPrev = document.getElementById("npPrev");
-const npNext = document.getElementById("npNext");
-const npStop = document.getElementById("npStop");
+const librarySheet = document.getElementById("librarySheet");
+const libraryList = document.getElementById("libraryList");
+const libraryUploadBtn = document.getElementById("libraryUploadBtn");
 
 const templatesSheet = document.getElementById("templatesSheet");
 const templatesList = document.getElementById("templatesList");
@@ -453,15 +423,18 @@ editModeBtn.addEventListener("click", () => {
 });
 
 /* ---------- Upload flow ---------- */
-let uploadContext = "library"; // "library" | "assign" | "playlist"
+let uploadContext = "library"; // "library" | "assign"
 function triggerUpload(context) {
   uploadContext = context;
   fileInput.value = "";
   fileInput.click();
 }
 
-uploadBtn.addEventListener("click", () => triggerUpload("library"));
-playlistUploadBtn.addEventListener("click", () => triggerUpload("playlist"));
+uploadBtn.addEventListener("click", () => {
+  renderLibraryList();
+  openSheet(librarySheet);
+});
+libraryUploadBtn.addEventListener("click", () => triggerUpload("library"));
 
 fileInput.addEventListener("change", async () => {
   const files = Array.from(fileInput.files || []);
@@ -485,37 +458,21 @@ fileInput.addEventListener("change", async () => {
   if (uploadContext === "assign" && assignTargetPad !== null) {
     pads[assignTargetPad].soundId = lastId;
     renderAssignSoundList();
-  } else if (uploadContext === "playlist") {
-    renderPlaylistList();
+  } else if (uploadContext === "library") {
+    renderLibraryList();
   }
 });
 
-/* ---------- Playlist ---------- */
-let playlistAudio = null;
-let playlistCurrentIndex = -1;
-
-function ensurePlaylistAudio() {
-  if (!playlistAudio) {
-    playlistAudio = new Audio();
-    playlistAudio.volume = masterVolume / 100;
-    playlistAudio.addEventListener("timeupdate", updateNowPlayingProgress);
-    playlistAudio.addEventListener("loadedmetadata", updateNowPlayingProgress);
-    playlistAudio.addEventListener("ended", () => playNextInPlaylist());
-    playlistAudio.addEventListener("play", () => { npPlayPause.textContent = "⏸"; });
-    playlistAudio.addEventListener("pause", () => { npPlayPause.textContent = "▶"; });
-  }
-  return playlistAudio;
-}
-
-function renderPlaylistList() {
-  playlistList.innerHTML = "";
+/* ---------- Sound Library (rename/delete uploaded sounds) ---------- */
+function renderLibraryList() {
+  libraryList.innerHTML = "";
   if (library.length === 0) {
-    playlistList.innerHTML = '<div class="empty-hint">No songs yet. Add some below.</div>';
+    libraryList.innerHTML = '<div class="empty-hint">No sounds yet. Upload some below.</div>';
     return;
   }
-  library.forEach((sound, idx) => {
+  library.forEach((sound) => {
     const row = document.createElement("div");
-    row.className = "sound-row" + (playlistCurrentIndex === idx ? " selected" : "");
+    row.className = "sound-row";
     const name = document.createElement("div");
     name.className = "sound-name";
     name.textContent = sound.name;
@@ -523,13 +480,12 @@ function renderPlaylistList() {
 
     const renameBtn = document.createElement("button");
     renameBtn.textContent = "✎";
-    renameBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
+    renameBtn.addEventListener("click", () => {
       const newName = prompt("Rename sound", sound.name);
       if (newName && newName.trim()) {
         sound.name = newName.trim();
         dbRename(sound.id, sound.name);
-        renderPlaylistList();
+        renderLibraryList();
         renderBoard();
       }
     });
@@ -537,17 +493,14 @@ function renderPlaylistList() {
     const delBtn = document.createElement("button");
     delBtn.textContent = "🗑";
     delBtn.className = "del-btn";
-    delBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!confirm(`Delete "${sound.name}"?`)) return;
+    delBtn.addEventListener("click", () => {
+      if (!confirm(`Delete "${sound.name}"? Any pad using it will be cleared.`)) return;
       deleteSound(sound.id);
     });
 
     row.appendChild(renameBtn);
     row.appendChild(delBtn);
-
-    row.addEventListener("click", () => playPlaylistIndex(idx));
-    playlistList.appendChild(row);
+    libraryList.appendChild(row);
   });
 }
 
@@ -557,81 +510,11 @@ async function deleteSound(soundId) {
   pads.forEach((p) => { if (p.soundId === soundId) p.soundId = null; });
   savePads();
   decodedCache.delete(soundId);
-  const url = objectUrlCache.get(soundId);
-  if (url) { URL.revokeObjectURL(url); objectUrlCache.delete(soundId); }
   renderBoard();
-  renderPlaylistList();
+  renderLibraryList();
   renderAssignSoundList();
   showToast("Deleted");
 }
-
-function playPlaylistIndex(idx) {
-  const sound = library[idx];
-  if (!sound) return;
-  playlistCurrentIndex = idx;
-  const audio = ensurePlaylistAudio();
-  const url = getObjectUrl(sound.id);
-  audio.src = url;
-  audio.play().catch(() => {});
-  npTitle.textContent = sound.name;
-  nowPlaying.classList.remove("hidden");
-  renderPlaylistList();
-}
-
-function playNextInPlaylist() {
-  if (library.length === 0) return;
-  const next = (playlistCurrentIndex + 1) % library.length;
-  playPlaylistIndex(next);
-}
-
-function playPrevInPlaylist() {
-  if (library.length === 0) return;
-  const prev = (playlistCurrentIndex - 1 + library.length) % library.length;
-  playPlaylistIndex(prev);
-}
-
-function stopPlaylist() {
-  if (playlistAudio) {
-    playlistAudio.pause();
-    playlistAudio.currentTime = 0;
-  }
-  playlistCurrentIndex = -1;
-  nowPlaying.classList.add("hidden");
-  renderPlaylistList();
-}
-
-function formatTime(sec) {
-  if (!Number.isFinite(sec)) return "0:00";
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
-}
-
-let seeking = false;
-function updateNowPlayingProgress() {
-  if (!playlistAudio || seeking) return;
-  const { currentTime, duration } = playlistAudio;
-  npCur.textContent = formatTime(currentTime);
-  npDur.textContent = formatTime(duration);
-  if (duration) npSeek.value = String((currentTime / duration) * 100);
-}
-
-npSeek.addEventListener("input", () => { seeking = true; });
-npSeek.addEventListener("change", () => {
-  if (playlistAudio && playlistAudio.duration) {
-    playlistAudio.currentTime = (parseFloat(npSeek.value) / 100) * playlistAudio.duration;
-  }
-  seeking = false;
-});
-
-npPlayPause.addEventListener("click", () => {
-  if (!playlistAudio) return;
-  if (playlistAudio.paused) playlistAudio.play().catch(() => {});
-  else playlistAudio.pause();
-});
-npPrev.addEventListener("click", playPrevInPlaylist);
-npNext.addEventListener("click", playNextInPlaylist);
-npStop.addEventListener("click", stopPlaylist);
 
 /* ---------- Volume sheet ---------- */
 masterVolumeSlider.addEventListener("input", () => {
@@ -838,10 +721,7 @@ document.querySelectorAll(".sheet").forEach((sheet) => {
   });
 });
 
-playlistBtn.addEventListener("click", () => {
-  renderPlaylistList();
-  openSheet(playlistSheet);
-});
+quickSaveTemplateBtn.addEventListener("click", saveCurrentAsTemplate);
 volumeBtn.addEventListener("click", () => {
   masterVolumeSlider.value = String(masterVolume);
   volumeValue.textContent = `${masterVolume}%`;

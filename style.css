@@ -139,8 +139,6 @@ body {
   font-weight: 600;
 }
 
-.ghost-btn.big { font-size: 22px; padding: 8px 16px; }
-
 #editModeBtn.active {
   background: var(--accent);
   border-color: var(--accent);
@@ -339,38 +337,6 @@ body {
   margin-top: 14px;
 }
 .sheet-actions .danger-btn, .sheet-actions .primary-btn { margin-top: 0; }
-
-.now-playing {
-  background: var(--panel-2);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-}
-.now-playing.hidden { display: none; }
-
-.np-title {
-  font-weight: 700;
-  margin-bottom: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.np-times {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: -4px;
-}
-
-.np-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 8px;
-}
 
 .volume-row {
   display: flex;

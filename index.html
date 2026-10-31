@@ -26,7 +26,7 @@
 <main id="board" class="board"></main>
 
 <footer class="bottombar">
-  <button id="playlistBtn" class="foot-btn">🎵 Playlist</button>
+  <button id="quickSaveTemplateBtn" class="foot-btn">💾 Save Template</button>
   <button id="uploadBtn" class="foot-btn">⬆ Upload</button>
   <button id="pauseBtn" class="foot-btn">⏸ Pause</button>
   <button id="stopBtn" class="foot-btn">⏹ Stop</button>
@@ -59,28 +59,16 @@
   </div>
 </div>
 
-<!-- Playlist sheet -->
-<div id="playlistSheet" class="sheet hidden">
+<!-- Sound Library sheet -->
+<div id="librarySheet" class="sheet hidden">
   <div class="sheet-card">
     <div class="sheet-header">
-      <h2>Playlist</h2>
-      <button class="close-btn" data-close="playlistSheet">✕</button>
+      <h2>Sound Library</h2>
+      <button class="close-btn" data-close="librarySheet">✕</button>
     </div>
-    <div id="nowPlaying" class="now-playing hidden">
-      <div class="np-title" id="npTitle">—</div>
-      <input type="range" id="npSeek" min="0" max="100" value="0" step="0.1">
-      <div class="np-times"><span id="npCur">0:00</span><span id="npDur">0:00</span></div>
-      <div class="np-controls">
-        <button id="npPrev" class="ghost-btn">⏮</button>
-        <button id="npPlayPause" class="ghost-btn big">▶</button>
-        <button id="npNext" class="ghost-btn">⏭</button>
-        <button id="npStop" class="ghost-btn">⏹</button>
-      </div>
-    </div>
-    <div id="playlistList" class="sound-list"></div>
-    <div class="sheet-actions">
-      <button id="playlistUploadBtn" class="primary-btn">⬆ Add songs…</button>
-    </div>
+    <p class="field-hint">All sounds you've uploaded, shared across every pad and template. Rename or delete them here.</p>
+    <div id="libraryList" class="sound-list"></div>
+    <button id="libraryUploadBtn" class="primary-btn">⬆ Upload new sound(s)…</button>
   </div>
 </div>
 
