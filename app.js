@@ -219,11 +219,11 @@ function setPaused(paused) {
   masterPaused = paused;
   if (paused) {
     if (audioCtx && audioCtx.state === "running") audioCtx.suspend();
-    pauseBtn.textContent = "▶ Resume";
+    pauseBtn.textContent = "Resume";
     pauseBtn.classList.add("active");
   } else {
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
-    pauseBtn.textContent = "⏸ Pause";
+    pauseBtn.textContent = "Pause";
     pauseBtn.classList.remove("active");
   }
 }
@@ -238,6 +238,7 @@ function setPadPlaying(padIndex, isPlaying) {
 const boardEl = document.getElementById("board");
 const templatesBtn = document.getElementById("templatesBtn");
 const editModeBtn = document.getElementById("editModeBtn");
+const newProjectHeaderBtn = document.getElementById("newProjectHeaderBtn");
 const quickSaveTemplateBtn = document.getElementById("quickSaveTemplateBtn");
 const uploadBtn = document.getElementById("uploadBtn");
 const pauseBtn = document.getElementById("pauseBtn");
@@ -479,7 +480,7 @@ function renderLibraryList() {
     row.appendChild(name);
 
     const renameBtn = document.createElement("button");
-    renameBtn.textContent = "✎";
+    renameBtn.textContent = "Rename";
     renameBtn.addEventListener("click", () => {
       const newName = prompt("Rename sound", sound.name);
       if (newName && newName.trim()) {
@@ -491,7 +492,7 @@ function renderLibraryList() {
     });
 
     const delBtn = document.createElement("button");
-    delBtn.textContent = "🗑";
+    delBtn.textContent = "Delete";
     delBtn.className = "del-btn";
     delBtn.addEventListener("click", () => {
       if (!confirm(`Delete "${sound.name}"? Any pad using it will be cleared.`)) return;
@@ -546,7 +547,7 @@ function renderTemplatesList() {
     header.appendChild(nameEl);
 
     const renameCatBtn = document.createElement("button");
-    renameCatBtn.textContent = "✎";
+    renameCatBtn.textContent = "Rename";
     renameCatBtn.addEventListener("click", () => {
       const name = prompt("Rename category", cat.name);
       if (name && name.trim()) {
@@ -556,7 +557,7 @@ function renderTemplatesList() {
       }
     });
     const delCatBtn = document.createElement("button");
-    delCatBtn.textContent = "🗑";
+    delCatBtn.textContent = "Delete";
     delCatBtn.className = "del-btn";
     delCatBtn.addEventListener("click", () => {
       if (!confirm(`Delete category "${cat.name}" and all its templates inside?`)) return;
@@ -577,7 +578,7 @@ function renderTemplatesList() {
       row.appendChild(name);
 
       const renameSubBtn = document.createElement("button");
-      renameSubBtn.textContent = "✎";
+      renameSubBtn.textContent = "Rename";
       renameSubBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         const name = prompt("Rename template", sub.name);
@@ -588,7 +589,7 @@ function renderTemplatesList() {
         }
       });
       const delSubBtn = document.createElement("button");
-      delSubBtn.textContent = "🗑";
+      delSubBtn.textContent = "Delete";
       delSubBtn.className = "del-btn";
       delSubBtn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -690,6 +691,9 @@ startNewBtn.addEventListener("click", () => {
 });
 newProjectBtn.addEventListener("click", () => {
   if (startNewProject()) closeSheet(templatesSheet);
+});
+newProjectHeaderBtn.addEventListener("click", () => {
+  if (startNewProject()) markSessionStarted();
 });
 
 startOpenBtn.addEventListener("click", () => {

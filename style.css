@@ -100,13 +100,9 @@ body {
   transform: scale(0.9);
 }
 
-.pad.edit-mode::after {
-  content: "✎";
-  position: absolute;
-  top: 2px;
-  right: 3px;
-  font-size: 9px;
-  opacity: 0.75;
+.pad.edit-mode {
+  border-style: dashed;
+  border-color: var(--accent-2);
 }
 
 .bottombar {
