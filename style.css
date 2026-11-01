@@ -223,6 +223,28 @@ body {
 
 .swatch.selected { border-color: #fff; }
 
+.track-selector {
+  display: flex;
+  gap: 10px;
+}
+
+.track-option {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.track-option.selected {
+  background: var(--accent-2);
+  color: #06131f;
+  border-color: var(--accent-2);
+}
+
 .sound-list {
   max-height: 30vh;
   overflow-y: auto;

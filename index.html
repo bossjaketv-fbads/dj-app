@@ -49,6 +49,12 @@
     <label class="field-label">Color</label>
     <div id="colorSwatches" class="swatches"></div>
 
+    <label class="field-label">Track</label>
+    <div id="trackSelector" class="track-selector">
+      <button type="button" class="track-option" data-track="1">Track 1</button>
+      <button type="button" class="track-option" data-track="2">Track 2</button>
+    </div>
+
     <label class="field-label">Sound</label>
     <div id="assignSoundList" class="sound-list"></div>
     <button id="assignUploadBtn" class="secondary-btn">Upload new sound…</button>
@@ -112,6 +118,19 @@
       <input type="range" id="masterVolumeSlider" min="0" max="100" value="80" step="1">
     </div>
     <div class="volume-value" id="volumeValue">80%</div>
+
+    <label class="field-label">Track 1 Volume</label>
+    <div class="volume-row">
+      <input type="range" id="track1VolumeSlider" min="0" max="100" value="100" step="1">
+    </div>
+    <div class="volume-value" id="track1VolumeValue">100%</div>
+
+    <label class="field-label">Track 2 Volume</label>
+    <div class="volume-row">
+      <input type="range" id="track2VolumeSlider" min="0" max="100" value="100" step="1">
+    </div>
+    <div class="volume-value" id="track2VolumeValue">100%</div>
+
     <button id="stopAllBtn" class="danger-btn wide">Stop All Sounds</button>
   </div>
 </div>

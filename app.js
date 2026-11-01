@@ -9,6 +9,8 @@ const COLORS = [
 ];
 const PADS_KEY = "spinner_pads_v1";
 const VOLUME_KEY = "spinner_volume_v1";
+const TRACK1_VOLUME_KEY = "spinner_track1_volume_v1";
+const TRACK2_VOLUME_KEY = "spinner_track2_volume_v1";
 const TEMPLATES_KEY = "spinner_templates_v1";
 
 /* ---------- IndexedDB (sound library) ---------- */
@@ -81,16 +83,21 @@ async function dbRename(id, name) {
 let library = [];               // [{id, name, blob, type}]
 let pads = loadPads();          // [{label, color, soundId}] x16
 let masterVolume = loadVolume();
+let track1Volume = loadTrackVolume(TRACK1_VOLUME_KEY);
+let track2Volume = loadTrackVolume(TRACK2_VOLUME_KEY);
 let editMode = false;
 let masterPaused = false;
 let assignTargetPad = null;     // index of pad being edited
 let pendingColor = null;
+let pendingTrack = 1;
 let templatesData = loadTemplates(); // { categories: [{id, name, subcategories: [{id, name, pads}]}] }
 
 const decodedCache = new Map(); // soundId -> AudioBuffer
 
 let audioCtx = null;
 let masterGain = null;
+let trackGain1 = null;
+let trackGain2 = null;
 
 function loadPads() {
   try {
@@ -115,6 +122,15 @@ function savePads() {
 function loadVolume() {
   const v = parseFloat(localStorage.getItem(VOLUME_KEY));
   return Number.isFinite(v) ? v : 80;
+}
+
+function loadTrackVolume(key) {
+  const v = parseFloat(localStorage.getItem(key));
+  return Number.isFinite(v) ? v : 100;
+}
+
+function saveTrackVolume(key, v) {
+  localStorage.setItem(key, String(v));
 }
 
 function loadTemplates() {
@@ -149,6 +165,14 @@ function ensureAudioCtx() {
     masterGain = audioCtx.createGain();
     masterGain.gain.value = masterVolume / 100;
     masterGain.connect(audioCtx.destination);
+
+    trackGain1 = audioCtx.createGain();
+    trackGain1.gain.value = track1Volume / 100;
+    trackGain1.connect(masterGain);
+
+    trackGain2 = audioCtx.createGain();
+    trackGain2.gain.value = track2Volume / 100;
+    trackGain2.connect(masterGain);
   }
   if (audioCtx.state === "suspended" && !masterPaused) audioCtx.resume();
   return audioCtx;
@@ -158,6 +182,18 @@ function setMasterVolume(v) {
   masterVolume = v;
   if (masterGain) masterGain.gain.value = v / 100;
   saveVolume();
+}
+
+function setTrackVolume(trackNum, v) {
+  if (trackNum === 2) {
+    track2Volume = v;
+    if (trackGain2) trackGain2.gain.value = v / 100;
+    saveTrackVolume(TRACK2_VOLUME_KEY, v);
+  } else {
+    track1Volume = v;
+    if (trackGain1) trackGain1.gain.value = v / 100;
+    saveTrackVolume(TRACK1_VOLUME_KEY, v);
+  }
 }
 
 function getSoundById(id) {
@@ -186,7 +222,7 @@ async function playPad(padIndex) {
     if (!buffer) return;
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(masterGain);
+    source.connect(pad.track === 2 ? trackGain2 : trackGain1);
     source.start(0);
     setPadPlaying(padIndex, true);
     const prev = activeSources.get(padIndex);
@@ -249,6 +285,7 @@ const fileInput = document.getElementById("fileInput");
 const assignSheet = document.getElementById("assignSheet");
 const padLabelInput = document.getElementById("padLabelInput");
 const colorSwatches = document.getElementById("colorSwatches");
+const trackSelector = document.getElementById("trackSelector");
 const assignSoundList = document.getElementById("assignSoundList");
 const assignUploadBtn = document.getElementById("assignUploadBtn");
 const clearPadBtn = document.getElementById("clearPadBtn");
@@ -271,6 +308,10 @@ const startLiveBtn = document.getElementById("startLiveBtn");
 const volumeSheet = document.getElementById("volumeSheet");
 const masterVolumeSlider = document.getElementById("masterVolumeSlider");
 const volumeValue = document.getElementById("volumeValue");
+const track1VolumeSlider = document.getElementById("track1VolumeSlider");
+const track1VolumeValue = document.getElementById("track1VolumeValue");
+const track2VolumeSlider = document.getElementById("track2VolumeSlider");
+const track2VolumeValue = document.getElementById("track2VolumeValue");
 const stopAllBtn = document.getElementById("stopAllBtn");
 
 const toastEl = document.getElementById("toast");
@@ -351,7 +392,9 @@ function openAssignSheet(padIndex) {
   const pad = pads[padIndex];
   padLabelInput.value = pad.label || "";
   pendingColor = pad.color;
+  pendingTrack = pad.track === 2 ? 2 : 1;
   renderColorSwatches();
+  renderTrackSelector();
   renderAssignSoundList();
   openSheet(assignSheet);
 }
@@ -369,6 +412,20 @@ function renderColorSwatches() {
     colorSwatches.appendChild(sw);
   });
 }
+
+function renderTrackSelector() {
+  trackSelector.querySelectorAll(".track-option").forEach((btn) => {
+    const btnTrack = parseInt(btn.dataset.track, 10);
+    btn.classList.toggle("selected", btnTrack === pendingTrack);
+  });
+}
+
+trackSelector.querySelectorAll(".track-option").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    pendingTrack = parseInt(btn.dataset.track, 10);
+    renderTrackSelector();
+  });
+});
 
 function renderAssignSoundList() {
   assignSoundList.innerHTML = "";
@@ -400,6 +457,7 @@ savePadBtn.addEventListener("click", () => {
   const pad = pads[assignTargetPad];
   pad.label = padLabelInput.value.trim();
   pad.color = pendingColor;
+  pad.track = pendingTrack;
   savePads();
   renderBoard();
   closeSheet(assignSheet);
@@ -410,6 +468,7 @@ clearPadBtn.addEventListener("click", () => {
   pad.soundId = null;
   pad.label = "";
   pad.color = null;
+  pad.track = 1;
   savePads();
   renderBoard();
   closeSheet(assignSheet);
@@ -522,6 +581,16 @@ masterVolumeSlider.addEventListener("input", () => {
   const v = parseInt(masterVolumeSlider.value, 10);
   setMasterVolume(v);
   volumeValue.textContent = `${v}%`;
+});
+track1VolumeSlider.addEventListener("input", () => {
+  const v = parseInt(track1VolumeSlider.value, 10);
+  setTrackVolume(1, v);
+  track1VolumeValue.textContent = `${v}%`;
+});
+track2VolumeSlider.addEventListener("input", () => {
+  const v = parseInt(track2VolumeSlider.value, 10);
+  setTrackVolume(2, v);
+  track2VolumeValue.textContent = `${v}%`;
 });
 stopAllBtn.addEventListener("click", stopAll);
 pauseBtn.addEventListener("click", () => setPaused(!masterPaused));
@@ -755,6 +824,10 @@ quickSaveTemplateBtn.addEventListener("click", saveCurrentAsTemplate);
 volumeBtn.addEventListener("click", () => {
   masterVolumeSlider.value = String(masterVolume);
   volumeValue.textContent = `${masterVolume}%`;
+  track1VolumeSlider.value = String(track1Volume);
+  track1VolumeValue.textContent = `${track1Volume}%`;
+  track2VolumeSlider.value = String(track2Volume);
+  track2VolumeValue.textContent = `${track2Volume}%`;
   openSheet(volumeSheet);
 });
 
