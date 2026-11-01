@@ -719,6 +719,12 @@ function renderTemplatesList() {
     nameEl.textContent = cat.name;
     header.appendChild(nameEl);
 
+    const addTemplateBtn = document.createElement("button");
+    addTemplateBtn.textContent = "Add Template";
+    addTemplateBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      addTemplateToCategory(cat);
+    });
     const renameCatBtn = document.createElement("button");
     renameCatBtn.textContent = "Rename";
     renameCatBtn.addEventListener("click", (e) => {
@@ -741,6 +747,7 @@ function renderTemplatesList() {
       saveTemplates();
       renderTemplatesList();
     });
+    header.appendChild(addTemplateBtn);
     header.appendChild(renameCatBtn);
     header.appendChild(delCatBtn);
 
@@ -762,6 +769,12 @@ function renderTemplatesList() {
         name.textContent = sub.name;
         row.appendChild(name);
 
+        const saveHereBtn = document.createElement("button");
+        saveHereBtn.textContent = "Save Here";
+        saveHereBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          overwriteExistingSub(cat, sub);
+        });
         const renameSubBtn = document.createElement("button");
         renameSubBtn.textContent = "Rename";
         renameSubBtn.addEventListener("click", (e) => {
@@ -783,6 +796,7 @@ function renderTemplatesList() {
           saveTemplates();
           renderTemplatesList();
         });
+        row.appendChild(saveHereBtn);
         row.appendChild(renameSubBtn);
         row.appendChild(delSubBtn);
 
@@ -809,6 +823,35 @@ function loadTemplate(cat, sub) {
   showToast(`Loaded: ${cat.name} > ${sub.name}`);
 }
 
+function saveCurrentPadsInto(cat, subName) {
+  const padsCopy = JSON.parse(JSON.stringify(pads));
+  const existingSub = cat.subcategories.find((s) => s.name.toLowerCase() === subName.toLowerCase());
+  if (existingSub) {
+    if (!confirm(`"${subName}" already exists under ${cat.name}. Overwrite it?`)) return;
+    existingSub.pads = padsCopy;
+  } else {
+    cat.subcategories.push({ id: genId(), name: subName, pads: padsCopy });
+  }
+  expandedCategories.add(cat.id);
+  saveTemplates();
+  renderTemplatesList();
+  showToast(`Saved: ${cat.name} > ${subName}`);
+}
+
+function overwriteExistingSub(cat, sub) {
+  if (!confirm(`Overwrite "${sub.name}" (${cat.name}) with your current project?`)) return;
+  sub.pads = JSON.parse(JSON.stringify(pads));
+  saveTemplates();
+  renderTemplatesList();
+  showToast(`Saved: ${cat.name} > ${sub.name}`);
+}
+
+function addTemplateToCategory(cat) {
+  const subInput = prompt(`New template name within "${cat.name}" (e.g. Kids, 7th Birthday Boy)`, "");
+  if (!subInput || !subInput.trim()) return;
+  saveCurrentPadsInto(cat, subInput.trim());
+}
+
 function saveCurrentAsTemplate() {
   const existingCatNames = templatesData.categories.map((c) => c.name).join(", ");
   const catInput = prompt(
@@ -827,19 +870,7 @@ function saveCurrentAsTemplate() {
     cat = { id: genId(), name: catName, subcategories: [] };
     templatesData.categories.push(cat);
   }
-
-  const padsCopy = JSON.parse(JSON.stringify(pads));
-  const existingSub = cat.subcategories.find((s) => s.name.toLowerCase() === subName.toLowerCase());
-  if (existingSub) {
-    if (!confirm(`"${subName}" already exists under ${cat.name}. Overwrite it?`)) return;
-    existingSub.pads = padsCopy;
-  } else {
-    cat.subcategories.push({ id: genId(), name: subName, pads: padsCopy });
-  }
-  expandedCategories.add(cat.id);
-  saveTemplates();
-  renderTemplatesList();
-  showToast(`Saved: ${cat.name} > ${subName}`);
+  saveCurrentPadsInto(cat, subName);
 }
 
 templatesBtn.addEventListener("click", () => {
