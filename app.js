@@ -87,6 +87,7 @@ let masterPaused = false;
 let assignTargetPad = null;     // index of pad being edited
 let pendingColor = null;
 let templatesData = loadTemplates(); // { categories: [{id, name, subcategories: [{id, name, pads}]}] }
+let padElements = []; // padIndex -> its DOM element (pads now live inside two separate sub-grids)
 
 const decodedCache = new Map(); // soundId -> AudioBuffer
 
@@ -247,7 +248,7 @@ function setPaused(paused) {
 }
 
 function setPadPlaying(padIndex, isPlaying) {
-  const el = boardEl.children[padIndex];
+  const el = padElements[padIndex];
   if (!el) return;
   el.classList.toggle("playing", isPlaying);
 }
@@ -358,6 +359,26 @@ function showToast(msg) {
 /* ---------- Board rendering ---------- */
 function renderBoard() {
   boardEl.innerHTML = "";
+  padElements = [];
+
+  const sfxDivider = document.createElement("div");
+  sfxDivider.className = "section-divider";
+  sfxDivider.textContent = "Sound Effects";
+  boardEl.appendChild(sfxDivider);
+
+  const sfxGrid = document.createElement("div");
+  sfxGrid.className = "pad-grid";
+  boardEl.appendChild(sfxGrid);
+
+  const bgDivider = document.createElement("div");
+  bgDivider.className = "section-divider";
+  bgDivider.textContent = "Background Music";
+  boardEl.appendChild(bgDivider);
+
+  const bgGrid = document.createElement("div");
+  bgGrid.className = "pad-grid";
+  boardEl.appendChild(bgGrid);
+
   pads.forEach((pad, i) => {
     const isBgMusic = i >= SOUND_EFFECTS_COUNT;
     const el = document.createElement(isBgMusic ? "div" : "button");
@@ -380,22 +401,10 @@ function renderBoard() {
       el.appendChild(buildBgPadControls(i, pad));
     }
 
-    if (i === 0) {
-      el.appendChild(buildSectionLabel("Sound Effects"));
-    } else if (i === SOUND_EFFECTS_COUNT) {
-      el.appendChild(buildSectionLabel("Background Music"));
-    }
-
     attachPadEvents(el, i, isBgMusic ? playBgPad : playPad);
-    boardEl.appendChild(el);
+    padElements[i] = el;
+    (isBgMusic ? bgGrid : sfxGrid).appendChild(el);
   });
-}
-
-function buildSectionLabel(text) {
-  const tag = document.createElement("span");
-  tag.className = "section-label";
-  tag.textContent = text;
-  return tag;
 }
 
 function buildBgPadControls(padIndex, pad) {
