@@ -2,6 +2,7 @@
 
 /* ---------- Constants ---------- */
 const PAD_COUNT = 64; // 8 columns x 8 rows
+const SOUND_EFFECTS_COUNT = 32; // pads[0..31] = Sound Effects, pads[32..63] = Background Music
 const COLORS = [
   "#ff3e3e", "#ff8a3e", "#ffd23e", "#8aff3e",
   "#3effc4", "#3ea0ff", "#7a5cff", "#ff5cd0",
@@ -9,8 +10,6 @@ const COLORS = [
 ];
 const PADS_KEY = "spinner_pads_v1";
 const VOLUME_KEY = "spinner_volume_v1";
-const TRACK1_VOLUME_KEY = "spinner_track1_volume_v1";
-const TRACK2_VOLUME_KEY = "spinner_track2_volume_v1";
 const TEMPLATES_KEY = "spinner_templates_v1";
 
 /* ---------- IndexedDB (sound library) ---------- */
@@ -81,25 +80,23 @@ async function dbRename(id, name) {
 
 /* ---------- State ---------- */
 let library = [];               // [{id, name, blob, type}]
-let pads = loadPads();          // [{label, color, soundId}] x16
+let pads = loadPads();          // [{label, color, soundId, volume}] x64
 let masterVolume = loadVolume();
-let track1Volume = loadTrackVolume(TRACK1_VOLUME_KEY);
-let track2Volume = loadTrackVolume(TRACK2_VOLUME_KEY);
 let editMode = false;
 let masterPaused = false;
 let assignTargetPad = null;     // index of pad being edited
 let pendingColor = null;
-let nextPlayTrack = 1;          // alternates 1/2 so overlapping taps land on different tracks automatically
 let templatesData = loadTemplates(); // { categories: [{id, name, subcategories: [{id, name, pads}]}] }
 
 const decodedCache = new Map(); // soundId -> AudioBuffer
 
 let audioCtx = null;
 let masterGain = null;
-let trackGain1 = null;
-let trackGain2 = null;
+const bgAudioElements = new Map(); // padIndex -> HTMLAudioElement (Background Music pads)
+let pausedBgPads = new Set();      // padIndexes that were actually playing when master-paused
 
 function loadPads() {
+  const blankPad = () => ({ label: "", color: null, soundId: null, volume: 100 });
   try {
     const raw = localStorage.getItem(PADS_KEY);
     if (raw) {
@@ -108,11 +105,11 @@ function loadPads() {
         if (arr.length === PAD_COUNT) return arr;
         // grid size changed since last save (e.g. 4x4 -> 8x8): keep existing
         // pad assignments in place rather than wiping them out
-        return Array.from({ length: PAD_COUNT }, (_, i) => arr[i] || { label: "", color: null, soundId: null });
+        return Array.from({ length: PAD_COUNT }, (_, i) => arr[i] || blankPad());
       }
     }
   } catch (e) {}
-  return Array.from({ length: PAD_COUNT }, () => ({ label: "", color: null, soundId: null }));
+  return Array.from({ length: PAD_COUNT }, blankPad);
 }
 
 function savePads() {
@@ -122,15 +119,6 @@ function savePads() {
 function loadVolume() {
   const v = parseFloat(localStorage.getItem(VOLUME_KEY));
   return Number.isFinite(v) ? v : 80;
-}
-
-function loadTrackVolume(key) {
-  const v = parseFloat(localStorage.getItem(key));
-  return Number.isFinite(v) ? v : 100;
-}
-
-function saveTrackVolume(key, v) {
-  localStorage.setItem(key, String(v));
 }
 
 function loadTemplates() {
@@ -165,14 +153,6 @@ function ensureAudioCtx() {
     masterGain = audioCtx.createGain();
     masterGain.gain.value = masterVolume / 100;
     masterGain.connect(audioCtx.destination);
-
-    trackGain1 = audioCtx.createGain();
-    trackGain1.gain.value = track1Volume / 100;
-    trackGain1.connect(masterGain);
-
-    trackGain2 = audioCtx.createGain();
-    trackGain2.gain.value = track2Volume / 100;
-    trackGain2.connect(masterGain);
   }
   if (audioCtx.state === "suspended" && !masterPaused) audioCtx.resume();
   return audioCtx;
@@ -181,19 +161,8 @@ function ensureAudioCtx() {
 function setMasterVolume(v) {
   masterVolume = v;
   if (masterGain) masterGain.gain.value = v / 100;
+  bgAudioElements.forEach((audio, padIndex) => { audio.volume = bgEffectiveVolume(padIndex); });
   saveVolume();
-}
-
-function setTrackVolume(trackNum, v) {
-  if (trackNum === 2) {
-    track2Volume = v;
-    if (trackGain2) trackGain2.gain.value = v / 100;
-    saveTrackVolume(TRACK2_VOLUME_KEY, v);
-  } else {
-    track1Volume = v;
-    if (trackGain1) trackGain1.gain.value = v / 100;
-    saveTrackVolume(TRACK1_VOLUME_KEY, v);
-  }
 }
 
 function getSoundById(id) {
@@ -222,11 +191,7 @@ async function playPad(padIndex) {
     if (!buffer) return;
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    // Alternate every trigger between Track 1 and Track 2, so whenever two
-    // sounds happen to overlap they land on different tracks automatically
-    // and can be balanced with the Track 1 / Track 2 sliders.
-    source.connect(nextPlayTrack === 2 ? trackGain2 : trackGain1);
-    nextPlayTrack = nextPlayTrack === 1 ? 2 : 1;
+    source.connect(masterGain);
     source.start(0);
     setPadPlaying(padIndex, true);
     const prev = activeSources.get(padIndex);
@@ -253,16 +218,29 @@ function stopAll() {
     setPadPlaying(padIndex, false);
   }
   activeSources.clear();
+  bgAudioElements.forEach((audio, padIndex) => stopBgPad(padIndex));
 }
 
 function setPaused(paused) {
   masterPaused = paused;
   if (paused) {
     if (audioCtx && audioCtx.state === "running") audioCtx.suspend();
+    pausedBgPads.clear();
+    bgAudioElements.forEach((audio, padIndex) => {
+      if (!audio.paused) {
+        pausedBgPads.add(padIndex);
+        audio.pause();
+      }
+    });
     pauseBtn.textContent = "Resume";
     pauseBtn.classList.add("active");
   } else {
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    pausedBgPads.forEach((padIndex) => {
+      const audio = bgAudioElements.get(padIndex);
+      if (audio) audio.play().catch(() => {});
+    });
+    pausedBgPads.clear();
     pauseBtn.textContent = "Pause";
     pauseBtn.classList.remove("active");
   }
@@ -272,6 +250,59 @@ function setPadPlaying(padIndex, isPlaying) {
   const el = boardEl.children[padIndex];
   if (!el) return;
   el.classList.toggle("playing", isPlaying);
+}
+
+/* ---------- Background Music pads (pads[32..63]): independent per-pad player ---------- */
+function bgEffectiveVolume(padIndex) {
+  const pad = pads[padIndex];
+  const padVol = (pad && Number.isFinite(pad.volume) ? pad.volume : 100) / 100;
+  return padVol * (masterVolume / 100);
+}
+
+function ensureBgAudio(padIndex) {
+  if (bgAudioElements.has(padIndex)) return bgAudioElements.get(padIndex);
+  const audio = new Audio();
+  audio.volume = bgEffectiveVolume(padIndex);
+  audio.addEventListener("play", () => setPadPlaying(padIndex, true));
+  audio.addEventListener("pause", () => setPadPlaying(padIndex, false));
+  audio.addEventListener("ended", () => setPadPlaying(padIndex, false));
+  bgAudioElements.set(padIndex, audio);
+  return audio;
+}
+
+function playBgPad(padIndex) {
+  const pad = pads[padIndex];
+  if (!pad || !pad.soundId) return;
+  const sound = getSoundById(pad.soundId);
+  if (!sound) return;
+  const audio = ensureBgAudio(padIndex);
+  if (audio.dataset.soundId !== String(pad.soundId)) {
+    audio.src = URL.createObjectURL(sound.blob);
+    audio.dataset.soundId = String(pad.soundId);
+  }
+  audio.volume = bgEffectiveVolume(padIndex);
+  ensureAudioCtx();
+  audio.play().catch(() => showToast("Cannot play sound"));
+}
+
+function pauseBgPad(padIndex) {
+  const audio = bgAudioElements.get(padIndex);
+  if (audio) audio.pause();
+}
+
+function stopBgPad(padIndex) {
+  const audio = bgAudioElements.get(padIndex);
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+}
+
+function setBgPadVolume(padIndex, v) {
+  pads[padIndex].volume = v;
+  savePads();
+  const audio = bgAudioElements.get(padIndex);
+  if (audio) audio.volume = bgEffectiveVolume(padIndex);
 }
 
 /* ---------- DOM refs ---------- */
@@ -313,9 +344,6 @@ const masterVolumeSlider = document.getElementById("masterVolumeSlider");
 const volumeValue = document.getElementById("volumeValue");
 const stopAllBtn = document.getElementById("stopAllBtn");
 
-const quickTrack1Slider = document.getElementById("quickTrack1Slider");
-const quickTrack2Slider = document.getElementById("quickTrack2Slider");
-
 const toastEl = document.getElementById("toast");
 
 /* ---------- Toast ---------- */
@@ -331,25 +359,104 @@ function showToast(msg) {
 function renderBoard() {
   boardEl.innerHTML = "";
   pads.forEach((pad, i) => {
-    const btn = document.createElement("button");
-    btn.className = "pad" + (pad.soundId ? "" : " empty") + (editMode ? " edit-mode" : "");
+    const isBgMusic = i >= SOUND_EFFECTS_COUNT;
+    const el = document.createElement(isBgMusic ? "div" : "button");
+    el.className = "pad" + (pad.soundId ? "" : " empty") + (editMode ? " edit-mode" : "") + (isBgMusic ? " bg-pad" : "");
+
     const label = document.createElement("span");
     label.className = "pad-label";
     const sound = pad.soundId ? getSoundById(pad.soundId) : null;
     label.textContent = pad.label || (sound ? sound.name : `PAD ${i + 1}`);
-    btn.appendChild(label);
+    el.appendChild(label);
+
     if (pad.color) {
-      btn.style.background = pad.color + "33";
-      btn.style.borderColor = pad.color;
-      btn.style.color = pad.color;
+      el.style.background = pad.color + "33";
+      el.style.borderColor = pad.color;
+      el.style.color = pad.color;
       label.style.color = "#fff";
     }
-    attachPadEvents(btn, i);
-    boardEl.appendChild(btn);
+
+    if (isBgMusic && pad.soundId) {
+      el.appendChild(buildBgPadControls(i, pad));
+    }
+
+    if (i === 0) {
+      el.appendChild(buildSectionLabel("Sound Effects"));
+    } else if (i === SOUND_EFFECTS_COUNT) {
+      el.appendChild(buildSectionLabel("Background Music"));
+    }
+
+    attachPadEvents(el, i, isBgMusic ? playBgPad : playPad);
+    boardEl.appendChild(el);
   });
 }
 
-function attachPadEvents(btn, index) {
+function buildSectionLabel(text) {
+  const tag = document.createElement("span");
+  tag.className = "section-label";
+  tag.textContent = text;
+  return tag;
+}
+
+function buildBgPadControls(padIndex, pad) {
+  const wrap = document.createElement("div");
+  wrap.className = "bg-pad-controls-wrap";
+
+  const controls = document.createElement("div");
+  controls.className = "pad-controls";
+
+  const playBtnEl = document.createElement("button");
+  playBtnEl.type = "button";
+  playBtnEl.className = "pad-icon-btn";
+  playBtnEl.title = "Play";
+  playBtnEl.innerHTML = '<span class="icon-play"></span>';
+  playBtnEl.addEventListener("click", () => playBgPad(padIndex));
+
+  const pauseBtnEl = document.createElement("button");
+  pauseBtnEl.type = "button";
+  pauseBtnEl.className = "pad-icon-btn";
+  pauseBtnEl.title = "Pause";
+  pauseBtnEl.innerHTML = '<span class="icon-pause"><span></span><span></span></span>';
+  pauseBtnEl.addEventListener("click", () => pauseBgPad(padIndex));
+
+  const stopBtnEl = document.createElement("button");
+  stopBtnEl.type = "button";
+  stopBtnEl.className = "pad-icon-btn";
+  stopBtnEl.title = "Stop";
+  stopBtnEl.innerHTML = '<span class="icon-stop"></span>';
+  stopBtnEl.addEventListener("click", () => stopBgPad(padIndex));
+
+  controls.appendChild(playBtnEl);
+  controls.appendChild(pauseBtnEl);
+  controls.appendChild(stopBtnEl);
+
+  const volumeRow = document.createElement("div");
+  volumeRow.className = "pad-volume-row";
+  const volumeSlider = document.createElement("input");
+  volumeSlider.type = "range";
+  volumeSlider.className = "pad-volume";
+  volumeSlider.min = "0";
+  volumeSlider.max = "100";
+  volumeSlider.value = String(Number.isFinite(pad.volume) ? pad.volume : 100);
+  volumeSlider.addEventListener("input", () => {
+    setBgPadVolume(padIndex, parseInt(volumeSlider.value, 10));
+  });
+  volumeRow.appendChild(volumeSlider);
+
+  wrap.appendChild(controls);
+  wrap.appendChild(volumeRow);
+
+  // Keep taps/drags on the controls from being swallowed by the parent
+  // pad's own tap/long-press detection (which would otherwise fire
+  // playBgPad or open the editor instead of the control actually touched).
+  ["touchstart", "touchmove", "touchend", "mousedown", "mousemove", "mouseup"].forEach((evt) => {
+    wrap.addEventListener(evt, (e) => e.stopPropagation());
+  });
+
+  return wrap;
+}
+
+function attachPadEvents(el, index, playFn) {
   let longPressTimer = null;
   let longPressed = false;
   let startX = 0, startY = 0;
@@ -373,19 +480,19 @@ function attachPadEvents(btn, index) {
     if (editMode) {
       openAssignSheet(index);
     } else if (pads[index].soundId) {
-      playPad(index);
+      playFn(index);
     } else {
       openAssignSheet(index);
     }
   };
 
-  btn.addEventListener("touchstart", (e) => start(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-  btn.addEventListener("touchmove", (e) => move(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-  btn.addEventListener("touchend", (e) => { e.preventDefault(); end(); });
+  el.addEventListener("touchstart", (e) => start(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  el.addEventListener("touchmove", (e) => move(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  el.addEventListener("touchend", (e) => { e.preventDefault(); end(); });
 
-  btn.addEventListener("mousedown", (e) => start(e.clientX, e.clientY));
-  btn.addEventListener("mousemove", (e) => move(e.clientX, e.clientY));
-  btn.addEventListener("mouseup", (e) => end());
+  el.addEventListener("mousedown", (e) => start(e.clientX, e.clientY));
+  el.addEventListener("mousemove", (e) => move(e.clientX, e.clientY));
+  el.addEventListener("mouseup", (e) => end());
 }
 
 /* ---------- Assign sheet ---------- */
@@ -453,6 +560,7 @@ clearPadBtn.addEventListener("click", () => {
   pad.soundId = null;
   pad.label = "";
   pad.color = null;
+  stopBgPad(assignTargetPad);
   savePads();
   renderBoard();
   closeSheet(assignSheet);
@@ -551,7 +659,7 @@ function renderLibraryList() {
 async function deleteSound(soundId) {
   await dbDelete(soundId);
   library = library.filter((s) => s.id !== soundId);
-  pads.forEach((p) => { if (p.soundId === soundId) p.soundId = null; });
+  pads.forEach((p, i) => { if (p.soundId === soundId) { p.soundId = null; stopBgPad(i); } });
   savePads();
   decodedCache.delete(soundId);
   renderBoard();
@@ -567,14 +675,6 @@ masterVolumeSlider.addEventListener("input", () => {
   volumeValue.textContent = `${v}%`;
 });
 stopAllBtn.addEventListener("click", stopAll);
-
-/* ---------- Quick track volume bar (always visible, bottom status bar) ---------- */
-quickTrack1Slider.addEventListener("input", () => {
-  setTrackVolume(1, parseInt(quickTrack1Slider.value, 10));
-});
-quickTrack2Slider.addEventListener("input", () => {
-  setTrackVolume(2, parseInt(quickTrack2Slider.value, 10));
-});
 
 pauseBtn.addEventListener("click", () => setPaused(!masterPaused));
 stopBtn.addEventListener("click", stopAll);
@@ -688,9 +788,10 @@ function renderTemplatesList() {
 
 function loadTemplate(cat, sub) {
   if (!confirm(`Load "${sub.name}" (${cat.name})? This replaces your current project.`)) return;
+  stopAll();
   let loaded = Array.isArray(sub.pads) ? JSON.parse(JSON.stringify(sub.pads)) : [];
   if (loaded.length !== PAD_COUNT) {
-    loaded = Array.from({ length: PAD_COUNT }, (_, i) => loaded[i] || { label: "", color: null, soundId: null });
+    loaded = Array.from({ length: PAD_COUNT }, (_, i) => loaded[i] || { label: "", color: null, soundId: null, volume: 100 });
   }
   pads = loaded;
   savePads();
@@ -753,7 +854,8 @@ function startNewProject() {
   if (!confirm("Start a new project? This clears all 64 pads (your uploaded sounds stay in the library, nothing is deleted). Save it as a template anytime from the Templates screen.")) {
     return false;
   }
-  pads = Array.from({ length: PAD_COUNT }, () => ({ label: "", color: null, soundId: null }));
+  stopAll();
+  pads = Array.from({ length: PAD_COUNT }, () => ({ label: "", color: null, soundId: null, volume: 100 }));
   savePads();
   editMode = true;
   editModeBtn.classList.add("active");
@@ -813,8 +915,6 @@ volumeBtn.addEventListener("click", () => {
 /* ---------- Init ---------- */
 async function init() {
   renderBoard();
-  quickTrack1Slider.value = String(track1Volume);
-  quickTrack2Slider.value = String(track2Volume);
   try {
     library = await dbGetAll();
   } catch (e) {
