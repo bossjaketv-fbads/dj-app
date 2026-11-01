@@ -308,11 +308,10 @@ const startLiveBtn = document.getElementById("startLiveBtn");
 const volumeSheet = document.getElementById("volumeSheet");
 const masterVolumeSlider = document.getElementById("masterVolumeSlider");
 const volumeValue = document.getElementById("volumeValue");
-const track1VolumeSlider = document.getElementById("track1VolumeSlider");
-const track1VolumeValue = document.getElementById("track1VolumeValue");
-const track2VolumeSlider = document.getElementById("track2VolumeSlider");
-const track2VolumeValue = document.getElementById("track2VolumeValue");
 const stopAllBtn = document.getElementById("stopAllBtn");
+
+const quickTrack1Slider = document.getElementById("quickTrack1Slider");
+const quickTrack2Slider = document.getElementById("quickTrack2Slider");
 
 const toastEl = document.getElementById("toast");
 
@@ -582,17 +581,16 @@ masterVolumeSlider.addEventListener("input", () => {
   setMasterVolume(v);
   volumeValue.textContent = `${v}%`;
 });
-track1VolumeSlider.addEventListener("input", () => {
-  const v = parseInt(track1VolumeSlider.value, 10);
-  setTrackVolume(1, v);
-  track1VolumeValue.textContent = `${v}%`;
-});
-track2VolumeSlider.addEventListener("input", () => {
-  const v = parseInt(track2VolumeSlider.value, 10);
-  setTrackVolume(2, v);
-  track2VolumeValue.textContent = `${v}%`;
-});
 stopAllBtn.addEventListener("click", stopAll);
+
+/* ---------- Quick track volume bar (always visible, bottom status bar) ---------- */
+quickTrack1Slider.addEventListener("input", () => {
+  setTrackVolume(1, parseInt(quickTrack1Slider.value, 10));
+});
+quickTrack2Slider.addEventListener("input", () => {
+  setTrackVolume(2, parseInt(quickTrack2Slider.value, 10));
+});
+
 pauseBtn.addEventListener("click", () => setPaused(!masterPaused));
 stopBtn.addEventListener("click", stopAll);
 
@@ -824,16 +822,14 @@ quickSaveTemplateBtn.addEventListener("click", saveCurrentAsTemplate);
 volumeBtn.addEventListener("click", () => {
   masterVolumeSlider.value = String(masterVolume);
   volumeValue.textContent = `${masterVolume}%`;
-  track1VolumeSlider.value = String(track1Volume);
-  track1VolumeValue.textContent = `${track1Volume}%`;
-  track2VolumeSlider.value = String(track2Volume);
-  track2VolumeValue.textContent = `${track2Volume}%`;
   openSheet(volumeSheet);
 });
 
 /* ---------- Init ---------- */
 async function init() {
   renderBoard();
+  quickTrack1Slider.value = String(track1Volume);
+  quickTrack2Slider.value = String(track2Volume);
   try {
     library = await dbGetAll();
   } catch (e) {

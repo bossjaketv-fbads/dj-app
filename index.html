@@ -34,6 +34,20 @@
   <button id="volumeBtn" class="foot-btn">Master Volume</button>
 </footer>
 
+<div class="statusbar">
+  <div class="brand">SPINNER APP</div>
+  <div class="quick-tracks">
+    <div class="quick-track">
+      <span class="quick-track-label">Track 1</span>
+      <input type="range" id="quickTrack1Slider" min="0" max="100" value="100" step="1">
+    </div>
+    <div class="quick-track">
+      <span class="quick-track-label">Track 2</span>
+      <input type="range" id="quickTrack2Slider" min="0" max="100" value="100" step="1">
+    </div>
+  </div>
+</div>
+
 <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.m4a,.ogg,.oga,.aac,.flac,.opus,.wma,.aiff" multiple hidden>
 
 <!-- Assign-sound-to-pad sheet -->
@@ -118,18 +132,6 @@
       <input type="range" id="masterVolumeSlider" min="0" max="100" value="80" step="1">
     </div>
     <div class="volume-value" id="volumeValue">80%</div>
-
-    <label class="field-label">Track 1 Volume</label>
-    <div class="volume-row">
-      <input type="range" id="track1VolumeSlider" min="0" max="100" value="100" step="1">
-    </div>
-    <div class="volume-value" id="track1VolumeValue">100%</div>
-
-    <label class="field-label">Track 2 Volume</label>
-    <div class="volume-row">
-      <input type="range" id="track2VolumeSlider" min="0" max="100" value="100" step="1">
-    </div>
-    <div class="volume-value" id="track2VolumeValue">100%</div>
 
     <button id="stopAllBtn" class="danger-btn wide">Stop All Sounds</button>
   </div>
