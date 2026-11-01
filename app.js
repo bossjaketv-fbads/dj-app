@@ -89,7 +89,7 @@ let editMode = false;
 let masterPaused = false;
 let assignTargetPad = null;     // index of pad being edited
 let pendingColor = null;
-let pendingTrack = 1;
+let nextPlayTrack = 1;          // alternates 1/2 so overlapping taps land on different tracks automatically
 let templatesData = loadTemplates(); // { categories: [{id, name, subcategories: [{id, name, pads}]}] }
 
 const decodedCache = new Map(); // soundId -> AudioBuffer
@@ -222,7 +222,11 @@ async function playPad(padIndex) {
     if (!buffer) return;
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(pad.track === 2 ? trackGain2 : trackGain1);
+    // Alternate every trigger between Track 1 and Track 2, so whenever two
+    // sounds happen to overlap they land on different tracks automatically
+    // and can be balanced with the Track 1 / Track 2 sliders.
+    source.connect(nextPlayTrack === 2 ? trackGain2 : trackGain1);
+    nextPlayTrack = nextPlayTrack === 1 ? 2 : 1;
     source.start(0);
     setPadPlaying(padIndex, true);
     const prev = activeSources.get(padIndex);
@@ -285,7 +289,6 @@ const fileInput = document.getElementById("fileInput");
 const assignSheet = document.getElementById("assignSheet");
 const padLabelInput = document.getElementById("padLabelInput");
 const colorSwatches = document.getElementById("colorSwatches");
-const trackSelector = document.getElementById("trackSelector");
 const assignSoundList = document.getElementById("assignSoundList");
 const assignUploadBtn = document.getElementById("assignUploadBtn");
 const clearPadBtn = document.getElementById("clearPadBtn");
@@ -391,9 +394,7 @@ function openAssignSheet(padIndex) {
   const pad = pads[padIndex];
   padLabelInput.value = pad.label || "";
   pendingColor = pad.color;
-  pendingTrack = pad.track === 2 ? 2 : 1;
   renderColorSwatches();
-  renderTrackSelector();
   renderAssignSoundList();
   openSheet(assignSheet);
 }
@@ -411,20 +412,6 @@ function renderColorSwatches() {
     colorSwatches.appendChild(sw);
   });
 }
-
-function renderTrackSelector() {
-  trackSelector.querySelectorAll(".track-option").forEach((btn) => {
-    const btnTrack = parseInt(btn.dataset.track, 10);
-    btn.classList.toggle("selected", btnTrack === pendingTrack);
-  });
-}
-
-trackSelector.querySelectorAll(".track-option").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    pendingTrack = parseInt(btn.dataset.track, 10);
-    renderTrackSelector();
-  });
-});
 
 function renderAssignSoundList() {
   assignSoundList.innerHTML = "";
@@ -456,7 +443,6 @@ savePadBtn.addEventListener("click", () => {
   const pad = pads[assignTargetPad];
   pad.label = padLabelInput.value.trim();
   pad.color = pendingColor;
-  pad.track = pendingTrack;
   savePads();
   renderBoard();
   closeSheet(assignSheet);
@@ -467,7 +453,6 @@ clearPadBtn.addEventListener("click", () => {
   pad.soundId = null;
   pad.label = "";
   pad.color = null;
-  pad.track = 1;
   savePads();
   renderBoard();
   closeSheet(assignSheet);
